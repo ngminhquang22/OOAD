@@ -5,7 +5,7 @@ public class DatabaseConnection {
     public static void main(String[] args) {
         // Thông tin kết nối
         String url = "jdbc:sqlserver://localhost\\SQLEXPRESS:1433;"
-                + "databaseName=GM;"
+                + "databaseName=InternetCafeDB;"
                 + "encrypt=false;"
                 + "trustServerCertificate=true;";
         String userName = "sa";
