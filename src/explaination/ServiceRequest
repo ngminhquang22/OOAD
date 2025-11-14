@@ -1,0 +1,98 @@
+Luồng hoạt động trong thực tế
+Hãy tưởng tượng một luồng cụ thể: Khách ở máy 5 (COM005) muốn mua 1 lon Coca.
+
+Bước 1: Khách hàng (Tại máy 5)
+
+Khách hàng đang trong phiên chơi (session_id = "USE123", customer_id = "CUS001").
+
+Họ bấm vào nút "Gọi dịch vụ" -> "Đặt hàng" -> "Coca Cola" -> "Số lượng: 1".
+
+Bước 2: Hệ thống (Tạo yêu cầu)
+
+Ngay khi khách bấm "Xác nhận", phần mềm của bạn sẽ INSERT một dòng mới vào bảng ServiceRequest.
+
+Dòng đó sẽ có dữ liệu:
+
+request_id: "SER001" (ID mới)
+
+session_id: "USE123" (Để biết yêu cầu này thuộc phiên chơi nào)
+
+customer_id: "CUS001" (Để biết ai yêu cầu)
+
+employee_id: NULL (Chưa ai xử lý yêu cầu này)
+
+type: "ProductPurchase" (Loại yêu cầu là mua hàng)
+
+product_id: "PRO-COCA" (Món hàng họ muốn)
+
+created_at: (Giờ hiện tại)
+
+status: "Pending" (Trạng thái: "Đang chờ")
+
+Bước 3: Nhân viên (Tại quầy)
+
+Phần mềm của nhân viên liên tục kiểm tra bảng ServiceRequest (hoặc CSDL báo có bản ghi mới).
+
+Nó thấy một yêu cầu "Pending" -> "Máy 5 (CUS001) gọi 1 Coca Cola".
+
+Một nhân viên (ví dụ: employee_id = "EMP002") thấy yêu cầu, bấm "Chấp nhận".
+
+Bước 4: Nhân viên (Xử lý)
+
+Nhân viên "EMP002" lấy 1 lon Coca trong kho.
+
+Mang đến máy 5 cho khách "CUS001".
+
+(Tùy chọn: Thu tiền mặt ngay, hoặc (phổ biến hơn) là cộng tiền vào phiên chơi của khách).
+
+Bước 5: Hệ thống (Cập nhật yêu cầu)
+
+Sau khi giao hàng xong, nhân viên "EMP002" bấm "Hoàn thành" trên phần mềm của mình.
+
+Hệ thống sẽ UPDATE lại dòng "SER001" trong bảng ServiceRequest:
+
+employee_id: "EMP002" (Giờ chúng ta biết ai đã xử lý)
+
+status: "Completed" (Trạng thái: "Đã xong")
+
+Khi status = "Completed", yêu cầu này sẽ biến mất khỏi "hàng đợi" của nhân viên.
+
+🔎 Tại sao các cột lại quan trọng?
+type: Cột này rất quan trọng. Nó cho nhân viên biết phải làm gì.
+
+type = "ProductPurchase": "Mang product_id đến cho khách."
+
+type = "TopUp": "Mang máy POS (hoặc đến thu tiền mặt) để nạp amount tiền vào tài khoản khách."
+
+type = "Help": "Khách cần trợ giúp kỹ thuật (hỏng chuột, lag...)"
+
+status: Đây là cột "vòng đời" của yêu cầu.
+
+Pending (Đang chờ): Mới tạo, chưa ai nhận.
+
+Processing (Đang xử lý): Nhân viên đã nhận, đang đi lấy đồ. (Tùy chọn)
+
+Completed (Đã hoàn thành): Đã giao hàng/xử lý xong.
+
+Cancelled (Đã hủy): Khách hàng hủy, hoặc nhân viên hủy (hết hàng).
+
+session_id / customer_id: Giúp xác định chính xác ai và ở đâu đang gọi.
+
+Mối quan hệ với Invoice (Hóa đơn)
+Đây là điểm bạn cần phân biệt rõ:
+
+ServiceRequest 🛒: Là YÊU CẦU (Cái "order").
+
+InvoiceDetail 🧾: Là CHI TIẾT THANH TOÁN (Cái "dòng trên hóa đơn").
+
+Khi khách hàng thanh toán lúc cuối giờ, hệ thống sẽ:
+
+Nhìn vào UsageSession để lấy tiền giờ chơi.
+
+Nhìn vào tất cả ServiceRequest có status = "Completed" và type = "ProductPurchase" thuộc session_id đó.
+
+Với mỗi ServiceRequest (như lon Coca ở trên), nó sẽ tạo một dòng InvoiceDetail tương ứng.
+
+Nói cách khác, ServiceRequest là đầu vào để tạo ra InvoiceDetail khi tính tiền.
+
+Bạn có thấy luồng hoạt động này hợp lý và rõ ràng hơn không?
